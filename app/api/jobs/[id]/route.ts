@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/db'
-import { VALID_TRANSITIONS, isValidWorkbookLink, JobStatus } from '@/types/job'
+import { isValidWorkbookLink, JobStatus } from '@/types/job'
+import { sendJobDoneEmail } from '@/lib/email'
 
 export async function PATCH(
   request: NextRequest,
@@ -9,7 +10,7 @@ export async function PATCH(
   try {
     const { id } = params
     const body = await request.json()
-    const { status: newStatus, workbook_link, ...rest } = body
+    const { status, workbook_link, priority, asset_links, description } = body
 
     const { data: job, error: fetchError } = await supabase
       .from('jobs')
@@ -21,8 +22,33 @@ export async function PATCH(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 })
     }
 
-    const updates: Record<string, unknown> = { ...rest }
+    const updates: Record<string, unknown> = {}
 
+    // Status transition
+    if (status && status !== job.status) {
+      const validStatuses: JobStatus[] = ['queued', 'in-progress', 'done']
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json(
+          { error: `Invalid status: ${status}` },
+          { status: 400 }
+        )
+      }
+      updates.status = status
+      // Set timestamps based on transition
+      if (status === 'in-progress' && !job.started_at) {
+        updates.started_at = new Date().toISOString()
+      }
+      if (status === 'done') {
+        updates.completed_at = new Date().toISOString()
+      }
+      // Clear timestamps if moving back
+      if (status === 'queued') {
+        updates.started_at = null
+        updates.completed_at = null
+      }
+    }
+
+    // Workbook link update
     if (workbook_link !== undefined) {
       if (workbook_link && !isValidWorkbookLink(workbook_link)) {
         return NextResponse.json(
@@ -33,29 +59,14 @@ export async function PATCH(
       updates.workbook_link = workbook_link || null
     }
 
-    if (newStatus && newStatus !== job.status) {
-      const validNext = VALID_TRANSITIONS[job.status as JobStatus] || []
-      if (!validNext.includes(newStatus)) {
-        return NextResponse.json(
-          { error: `Cannot transition from ${job.status} to ${newStatus}` },
-          { status: 400 }
-        )
-      }
+    // Priority update (AM only action, enforced client-side)
+    if (priority) updates.priority = priority
 
-      // Workbook link required to go live
-      const effectiveLink = updates.workbook_link !== undefined ? updates.workbook_link : job.workbook_link
-      if (newStatus === 'live' && !effectiveLink) {
-        return NextResponse.json(
-          { error: 'Add the Workbook job link before marking this live' },
-          { status: 400 }
-        )
-      }
+    // Asset links update
+    if (asset_links !== undefined) updates.asset_links = asset_links
 
-      updates.status = newStatus
-      if (newStatus === 'done' || newStatus === 'live') {
-        updates.completed_at = new Date().toISOString()
-      }
-    }
+    // Description update
+    if (description !== undefined) updates.description = description || null
 
     const { data, error } = await supabase
       .from('jobs')
@@ -65,13 +76,41 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error('PATCH /api/jobs/[id] error:', error)
+      console.error('PATCH /api/jobs/[id]:', error)
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+
+    // Send "job done" email to the AM who created it
+    if (updates.status === 'done') {
+      try {
+        const { data: creator } = await supabase
+          .from('users')
+          .select('name, email')
+          .eq('id', job.created_by)
+          .single()
+
+        const { data: completedByUser } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', body.completed_by || job.created_by)
+          .single()
+
+        if (creator?.email) {
+          await sendJobDoneEmail({
+            toEmail: creator.email,
+            toName: creator.name,
+            jobTitle: job.title,
+            completedBy: completedByUser?.name || 'Dev',
+          })
+        }
+      } catch (emailErr) {
+        console.error('Job done email failed:', emailErr)
+      }
     }
 
     return NextResponse.json(data)
   } catch (err) {
-    console.error('PATCH /api/jobs/[id] unexpected error:', err)
+    console.error('PATCH /api/jobs/[id] unexpected:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -87,7 +126,7 @@ export async function DELETE(
     }
     return new NextResponse(null, { status: 204 })
   } catch (err) {
-    console.error('DELETE /api/jobs/[id] unexpected error:', err)
+    console.error('DELETE /api/jobs/[id] unexpected:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

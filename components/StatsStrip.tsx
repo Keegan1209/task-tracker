@@ -1,64 +1,47 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle } from 'lucide-react'
+import { Job, isOverdue } from '@/types/job'
 
 interface StatsStripProps {
-  stats: {
-    totalActive: number
-    inProgress: number
-    blocked: number
-    overdue: number
-    completedThisWeek: number
-    p1sThisWeek: number
-  }
-  wipCapExceeded: boolean
+  jobs: Job[]
 }
 
-const bannerVariants = {
-  hidden: { height: 0, opacity: 0 },
-  visible: { height: 'auto', opacity: 1, transition: { duration: 0.2 } },
-}
+export default function StatsStrip({ jobs }: StatsStripProps) {
+  const queued = jobs.filter(j => j.status === 'queued').length
+  const inProgress = jobs.filter(j => j.status === 'in-progress').length
+  const doneToday = jobs.filter(j =>
+    j.status === 'done' && j.completed_at &&
+    new Date(j.completed_at).toDateString() === new Date().toDateString()
+  ).length
+  const p1Open = jobs.filter(j => j.priority === 'p1' && j.status !== 'done').length
+  const overdue = jobs.filter(j => isOverdue(j)).length
+  const atCap = inProgress >= 3
 
-function StatItem({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
   return (
-    <div className="flex flex-col items-center px-4 py-2 border-r border-white/10 last:border-r-0">
-      <span className={`font-mono text-lg font-bold tabular-nums ${highlight ? 'text-red-400' : 'text-white'}`}>
-        {value}
-      </span>
-      <span className="text-xs text-gray-400 whitespace-nowrap">{label}</span>
-    </div>
-  )
-}
-
-export default function StatsStrip({ stats, wipCapExceeded }: StatsStripProps) {
-  return (
-    <div className="bg-[#0F0F0F]">
-      <AnimatePresence>
-        {wipCapExceeded && (
-          <motion.div
-            key="wip-banner"
-            variants={bannerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            className="overflow-hidden"
-          >
-            <div className="flex items-center justify-center gap-2 bg-red-900/40 border-b border-red-800/50 px-4 py-2 text-sm text-red-300">
-              <AlertTriangle size={14} />
-              WIP cap exceeded — {stats.inProgress} jobs in progress (max 3)
-            </div>
-          </motion.div>
+    <div className="bg-[#0F0F0F] border-b border-white/10">
+      <div className="flex items-center px-6 py-2.5 gap-6 text-xs font-mono flex-wrap">
+        <span className="text-gray-400">
+          Queued: <span className="text-white font-semibold">{queued}</span>
+        </span>
+        <span className="text-gray-400">
+          In Progress:{' '}
+          <span className={`font-semibold ${atCap ? 'text-red-400' : 'text-white'}`}>
+            {inProgress} / 3
+          </span>
+        </span>
+        <span className="text-gray-400">
+          Done Today: <span className="text-white font-semibold">{doneToday}</span>
+        </span>
+        {p1Open > 0 && (
+          <span className="text-gray-400">
+            P1 Open: <span className="text-red-400 font-semibold">{p1Open}</span>
+          </span>
         )}
-      </AnimatePresence>
-
-      <div className="flex items-center justify-center flex-wrap">
-        <StatItem label="Active" value={stats.totalActive} />
-        <StatItem label="In Progress" value={stats.inProgress} highlight={wipCapExceeded} />
-        <StatItem label="Blocked" value={stats.blocked} />
-        <StatItem label="Overdue" value={stats.overdue} />
-        <StatItem label="Done This Week" value={stats.completedThisWeek} />
-        <StatItem label="P1s This Week" value={stats.p1sThisWeek} />
+        {overdue > 0 && (
+          <span className="text-gray-400">
+            Overdue: <span className="text-amber-400 font-semibold">{overdue}</span>
+          </span>
+        )}
       </div>
     </div>
   )

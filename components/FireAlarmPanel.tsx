@@ -2,30 +2,33 @@
 
 import { useState } from 'react'
 import { X, Flame } from 'lucide-react'
-import { FireAlarmPayload, isValidWorkbookLink, WORKBOOK_LINK_PREFIX } from '@/types/job'
+import { FireAlarmPayload, User, WORKBOOK_PREFIX, isValidWorkbookLink } from '@/types/job'
 
 interface FireAlarmPanelProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (job: FireAlarmPayload) => Promise<void>
+  currentUser: User
+  users: User[]
 }
 
-export default function FireAlarmPanel({ open, onOpenChange, onSubmit }: FireAlarmPanelProps) {
-  const [form, setForm] = useState<Partial<FireAlarmPayload>>({})
+export default function FireAlarmPanel({ open, onOpenChange, onSubmit, currentUser, users }: FireAlarmPanelProps) {
+  const devs = users.filter(u => u.role === 'dev' || u.role === 'admin')
+  const [form, setForm] = useState({ client: 'Audi', description: '', assigned_to: 'all', workbook_link: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
 
-  function set(field: keyof FireAlarmPayload, value: string) {
+  function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
     setErrors(e => { const n = { ...e }; delete n[field]; return n })
   }
 
   function validate(): boolean {
     const e: Record<string, string> = {}
-    if (!form.client?.trim()) e.client = 'Required'
-    if (!form.title?.trim()) e.title = 'Required'
+    if (!form.client.trim()) e.client = 'Required'
+    if (!form.description.trim()) e.description = 'Required'
     if (form.workbook_link && !isValidWorkbookLink(form.workbook_link)) {
-      e.workbook_link = `Must start with ${WORKBOOK_LINK_PREFIX}`
+      e.workbook_link = `Must start with ${WORKBOOK_PREFIX}`
     }
     setErrors(e)
     return Object.keys(e).length === 0
@@ -36,9 +39,15 @@ export default function FireAlarmPanel({ open, onOpenChange, onSubmit }: FireAla
     if (!validate()) return
     setSubmitting(true)
     try {
-      await onSubmit(form as FireAlarmPayload)
+      await onSubmit({
+        title: `[${form.client.trim()}] ${form.description.trim()}`,
+        client_context: form.description.trim(),
+        assigned_to: form.assigned_to,
+        created_by: currentUser.id,
+        workbook_link: form.workbook_link || undefined,
+      })
       onOpenChange(false)
-      setForm({})
+      setForm({ client: 'Audi', description: '', assigned_to: 'all', workbook_link: '' })
     } finally {
       setSubmitting(false)
     }
@@ -55,72 +64,50 @@ export default function FireAlarmPanel({ open, onOpenChange, onSubmit }: FireAla
             <Flame size={18} className="text-red-600" />
             <h2 className="text-base font-semibold text-red-900">Raise Urgent P1</h2>
           </div>
-          <button onClick={() => onOpenChange(false)} className="text-gray-400 hover:text-gray-600">
-            <X size={18} />
-          </button>
+          <button onClick={() => onOpenChange(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
 
         <div className="px-6 py-3 bg-red-50 border-b border-red-100">
-          <p className="text-xs text-red-700">
-            This job goes straight to the active queue. Add the Workbook link now or after — it&apos;s required before marking Live.
-          </p>
+          <p className="text-xs text-red-700">Goes straight to the top of the queue. Add Workbook link now or after.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 px-6 py-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Client <span className="text-red-500">*</span>
-            </label>
-            <input
-              className={inp(errors.client)}
-              value={form.client || ''}
-              onChange={e => set('client', e.target.value)}
-              placeholder="e.g. BMW"
-            />
-            {errors.client && <p className="text-xs text-red-500 mt-0.5">{errors.client}</p>}
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              What&apos;s broken / the ask <span className="text-red-500">*</span>
-            </label>
-            <input
-              className={inp(errors.title)}
-              value={form.title || ''}
-              onChange={e => set('title', e.target.value)}
-              placeholder="One-line description of the issue"
-            />
-            {errors.title && <p className="text-xs text-red-500 mt-0.5">{errors.title}</p>}
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Priority
-            </label>
-            <div className="px-3 py-2 bg-red-100 text-red-700 text-sm font-semibold rounded-md">
-              🔴 P1 — Locked
+            <label className="block text-xs font-medium text-gray-700 mb-1">Client</label>
+            <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700 font-medium">
+              Audi
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Workbook link <span className="text-gray-400">(optional — add later if needed)</span>
-            </label>
-            <input
-              className={inp(errors.workbook_link)}
-              value={form.workbook_link || ''}
-              onChange={e => set('workbook_link', e.target.value)}
-              placeholder={`${WORKBOOK_LINK_PREFIX}...`}
+            <label className="block text-xs font-medium text-gray-700 mb-1">What&apos;s broken / the ask <span className="text-red-500">*</span></label>
+            <textarea
+              className={inp(errors.description)}
+              rows={4}
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+              placeholder="Describe the issue or request in as much detail as needed…"
             />
+            {errors.description && <p className="text-xs text-red-500 mt-0.5">{errors.description}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Assign to</label>
+            <select className={inp()} value={form.assigned_to} onChange={e => set('assigned_to', e.target.value)}>
+              <option value="all">All Devs</option>
+              {devs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Workbook link <span className="text-gray-400">(optional)</span></label>
+            <input className={inp(errors.workbook_link)} value={form.workbook_link} onChange={e => set('workbook_link', e.target.value)} placeholder={`${WORKBOOK_PREFIX}...`} />
             {errors.workbook_link && <p className="text-xs text-red-500 mt-0.5">{errors.workbook_link}</p>}
           </div>
 
           <div className="pt-2">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-            >
+            <button type="submit" disabled={submitting}
+              className="w-full py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors">
               {submitting ? 'Raising…' : '🔴 Raise Urgent'}
             </button>
           </div>

@@ -1,71 +1,63 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Flame, Plus } from 'lucide-react'
-import { Job, CreateJobPayload, FireAlarmPayload } from '@/types/job'
-import { requestNotificationPermission, sendP1Notification } from '@/lib/notifications'
+import { Flame, Plus, LogOut } from 'lucide-react'
+import { Job, User, JobPriority, JobStatus, CreateJobPayload, FireAlarmPayload } from '@/types/job'
+import { fetchUsers, getSessionUser, setSessionUser, clearSessionUser } from '@/lib/users'
+import { requestNotificationPermission, sendP1Notification, sendFireAlarmNotification, sendAssignmentNotification } from '@/lib/notifications'
+import UserPicker from '@/components/UserPicker'
 import StatsStrip from '@/components/StatsStrip'
-import DevBoard from '@/components/DevBoard'
-import AMBoard from '@/components/AMBoard'
+import JobBoard from '@/components/JobBoard'
 import NewJobPanel from '@/components/NewJobPanel'
 import FireAlarmPanel from '@/components/FireAlarmPanel'
 
-type Role = 'am' | 'dev'
-const ROLE_KEY = 'cms_tracker_role'
-
-function computeStats(jobs: Job[]) {
-  const now = new Date()
-  const weekStart = new Date(now)
-  weekStart.setDate(now.getDate() - now.getDay())
-  weekStart.setHours(0, 0, 0, 0)
-
-  return {
-    totalActive: jobs.filter(j => j.status !== 'live').length,
-    inProgress: jobs.filter(j => j.status === 'in-progress').length,
-    blocked: 0,
-    overdue: jobs.filter(j => {
-      if (!j.due_date || j.status === 'done' || j.status === 'live') return false
-      return new Date(j.due_date) < new Date(now.toDateString())
-    }).length,
-    completedThisWeek: jobs.filter(j =>
-      (j.status === 'done' || j.status === 'live') &&
-      j.completed_at && new Date(j.completed_at) >= weekStart
-    ).length,
-    p1sThisWeek: jobs.filter(j =>
-      j.priority === 'p1' && new Date(j.created_at) >= weekStart
-    ).length,
-  }
-}
-
 export default function Home() {
+  const [users, setUsers] = useState<User[]>([])
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
-  const [role, setRole] = useState<Role>('am')
   const [newJobOpen, setNewJobOpen] = useState(false)
   const [fireAlarmOpen, setFireAlarmOpen] = useState(false)
 
+  // Load users on mount
+  useEffect(() => {
+    fetchUsers().then(u => {
+      setUsers(u)
+      const session = getSessionUser(u)
+      if (session) setCurrentUser(session)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+    requestNotificationPermission()
+  }, [])
+
   const fetchJobs = useCallback(async () => {
     try {
-      const res = await fetch('/api/jobs?include_live=true')
+      const res = await fetch('/api/jobs')
       if (res.ok) setJobs(await res.json())
     } catch (err) {
       console.error('Failed to fetch jobs:', err)
-    } finally {
-      setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(ROLE_KEY) as Role | null
-    if (saved) setRole(saved)
-    requestNotificationPermission()
-    fetchJobs()
-  }, [fetchJobs])
+    if (currentUser) fetchJobs()
+  }, [currentUser, fetchJobs])
 
-  function toggleRole() {
-    const next: Role = role === 'am' ? 'dev' : 'am'
-    setRole(next)
-    sessionStorage.setItem(ROLE_KEY, next)
+  // Poll every 30s to stay in sync
+  useEffect(() => {
+    if (!currentUser) return
+    const interval = setInterval(fetchJobs, 30000)
+    return () => clearInterval(interval)
+  }, [currentUser, fetchJobs])
+
+  function handleSelectUser(user: User) {
+    setCurrentUser(user)
+    setSessionUser(user.id)
+  }
+
+  function handleSignOut() {
+    clearSessionUser()
+    setCurrentUser(null)
   }
 
   const patch = useCallback(async (jobId: string, body: Record<string, unknown>) => {
@@ -84,9 +76,17 @@ export default function Home() {
   }, [])
 
   const handleStart = useCallback((jobId: string) => patch(jobId, { status: 'in-progress' }), [patch])
-  const handleDone = useCallback((jobId: string) => patch(jobId, { status: 'done' }), [patch])
-  const handleMarkLive = useCallback((jobId: string) => patch(jobId, { status: 'live' }), [patch])
+  const handleDone = useCallback((jobId: string) => patch(jobId, { status: 'done', completed_by: currentUser?.id }), [patch, currentUser])
+  const handlePriorityChange = useCallback((jobId: string, priority: JobPriority) => patch(jobId, { priority }), [patch])
   const handleWorkbookLinkAdd = useCallback((jobId: string, link: string) => patch(jobId, { workbook_link: link }), [patch])
+  const handleStatusChange = useCallback((jobId: string, status: string) => patch(jobId, { status }), [patch])
+  const handleDescriptionUpdate = useCallback((jobId: string, description: string) => patch(jobId, { description }), [patch])
+
+  const handleDelete = useCallback(async (jobId: string) => {
+    if (!confirm('Delete this job?')) return
+    const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' })
+    if (res.ok) setJobs(prev => prev.filter(j => j.id !== jobId))
+  }, [])
 
   const handleNewJob = useCallback(async (payload: CreateJobPayload) => {
     const res = await fetch('/api/jobs', {
@@ -97,7 +97,8 @@ export default function Home() {
     if (res.ok) {
       const created = await res.json()
       setJobs(prev => [created, ...prev])
-      if (payload.priority === 'p1') sendP1Notification(payload.title, payload.client || '')
+      if (payload.priority === 'p1') sendP1Notification(payload.title)
+      if (payload.assigned_to !== 'all') sendAssignmentNotification(payload.title)
     } else {
       const err = await res.json()
       alert(err.error || 'Failed to create job')
@@ -108,19 +109,40 @@ export default function Home() {
     const res = await fetch('/api/jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, is_fire_alarm: true }),
+      body: JSON.stringify({
+        title: payload.title,
+        description: payload.client_context,
+        workbook_link: payload.workbook_link,
+        assigned_to: payload.assigned_to,
+        created_by: payload.created_by,
+        is_fire_alarm: true,
+        priority: 'p1',
+      }),
     })
     if (res.ok) {
       const created = await res.json()
       setJobs(prev => [created, ...prev])
-      sendP1Notification(payload.title, payload.client)
+      sendFireAlarmNotification(payload.client_context)
     } else {
       const err = await res.json()
       alert(err.error || 'Failed to raise urgent job')
     }
   }, [])
 
-  const stats = computeStats(jobs)
+  // Show user picker if no session
+  if (!loading && !currentUser) {
+    return <UserPicker users={users} onSelect={handleSelectUser} />
+  }
+
+  if (loading || !currentUser) {
+    return (
+      <div className="fixed inset-0 bg-[#0F0F0F] flex items-center justify-center">
+        <p className="text-gray-500 text-sm">Loading…</p>
+      </div>
+    )
+  }
+
+  const isAM = currentUser.role === 'am' || currentUser.role === 'admin'
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#FAFAFA]">
@@ -137,35 +159,39 @@ export default function Home() {
           </div>
         </nav>
 
-        {/* Role toggle */}
+        {/* Current user */}
         <div className="px-4 py-4 border-t border-white/10">
-          <p className="text-xs text-gray-500 mb-2">Viewing as</p>
+          <div className="flex items-center gap-2 mb-3">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0
+              ${currentUser.role === 'admin' ? 'bg-purple-600' : currentUser.role === 'am' ? 'bg-indigo-600' : 'bg-emerald-600'}`}>
+              {currentUser.initial}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-xs font-medium truncate">{currentUser.name}</p>
+              <p className="text-gray-500 text-xs">{currentUser.role === 'am' ? 'AM / PM' : currentUser.role === 'admin' ? 'Admin' : 'Developer'}</p>
+            </div>
+          </div>
           <button
-            onClick={toggleRole}
-            className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/15 rounded-md transition-colors"
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-1.5 px-2 py-1.5 text-xs text-gray-500 hover:text-gray-300 hover:bg-white/5 rounded transition-colors"
           >
-            <span className="text-xs text-white font-medium">
-              {role === 'am' ? '👤 AM / PM' : '💻 Developer'}
-            </span>
-            <span className="text-xs text-gray-500">switch</span>
+            <LogOut size={12} />
+            Switch user
           </button>
         </div>
       </aside>
 
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 shrink-0">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">
-              {role === 'dev' ? 'Your Queue' : 'Job Board'}
-            </h2>
+            <h2 className="text-sm font-semibold text-gray-900">Job Board</h2>
             <p className="text-xs text-gray-400">
               {new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {role === 'am' && (
+            {isAM && (
               <button
                 onClick={() => setNewJobOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
@@ -184,31 +210,38 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Stats strip */}
-        <StatsStrip stats={stats} wipCapExceeded={stats.inProgress >= 3} />
+        <StatsStrip jobs={jobs} />
 
-        {/* Board */}
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
-            Loading…
-          </div>
-        ) : role === 'dev' ? (
-          <DevBoard
-            jobs={jobs}
-            onStart={handleStart}
-            onDone={handleDone}
-          />
-        ) : (
-          <AMBoard
-            jobs={jobs}
-            onWorkbookLinkAdd={handleWorkbookLinkAdd}
-            onMarkLive={handleMarkLive}
-          />
-        )}
+        <JobBoard
+          jobs={jobs}
+          currentUser={currentUser}
+          users={users}
+          onStart={handleStart}
+          onDone={handleDone}
+          onDelete={handleDelete}
+          onPriorityChange={handlePriorityChange}
+          onStatusChange={handleStatusChange}
+          onDescriptionUpdate={handleDescriptionUpdate}
+          onWorkbookLinkAdd={handleWorkbookLinkAdd}
+        />
       </main>
 
-      <NewJobPanel open={newJobOpen} onOpenChange={setNewJobOpen} onSubmit={handleNewJob} />
-      <FireAlarmPanel open={fireAlarmOpen} onOpenChange={setFireAlarmOpen} onSubmit={handleFireAlarm} />
+      {isAM && (
+        <NewJobPanel
+          open={newJobOpen}
+          onOpenChange={setNewJobOpen}
+          onSubmit={handleNewJob}
+          currentUser={currentUser}
+          users={users}
+        />
+      )}
+      <FireAlarmPanel
+        open={fireAlarmOpen}
+        onOpenChange={setFireAlarmOpen}
+        onSubmit={handleFireAlarm}
+        currentUser={currentUser}
+        users={users}
+      />
     </div>
   )
 }
