@@ -18,31 +18,35 @@ export default function StatsStrip({ jobs }: StatsStripProps) {
   const atCap = inProgress >= 3
 
   return (
-    <div className="bg-[#0F0F0F] border-b border-white/10">
-      <div className="flex items-center px-6 py-2.5 gap-6 text-xs font-mono flex-wrap">
-        <span className="text-gray-400">
-          Queued: <span className="text-white font-semibold">{queued}</span>
-        </span>
-        <span className="text-gray-400">
-          In Progress:{' '}
-          <span className={`font-semibold ${atCap ? 'text-red-400' : 'text-white'}`}>
-            {inProgress} / 3
-          </span>
-        </span>
-        <span className="text-gray-400">
-          Done Today: <span className="text-white font-semibold">{doneToday}</span>
-        </span>
-        {p1Open > 0 && (
-          <span className="text-gray-400">
-            P1 Open: <span className="text-red-400 font-semibold">{p1Open}</span>
-          </span>
-        )}
-        {overdue > 0 && (
-          <span className="text-gray-400">
-            Overdue: <span className="text-amber-400 font-semibold">{overdue}</span>
-          </span>
-        )}
+    <div className="bg-[#101319] border-b border-[#2A2A2A]">
+      <div className="flex items-center px-6 py-2.5 gap-6 flex-wrap">
+        <Stat label="Queued" value={queued} color="text-[#7EB8E8]" />
+        <Stat
+          label="In Progress"
+          value={`${inProgress} / 3`}
+          color={atCap ? 'text-[#E87878]' : 'text-[#7EC87E]'}
+          alert={atCap}
+        />
+        <Stat label="Done Today" value={doneToday} color="text-[#5A9A5A]" />
+        {p1Open > 0 && <Stat label="P1 Open" value={p1Open} color="text-[#E87878]" alert />}
+        {overdue > 0 && <Stat label="Overdue" value={overdue} color="text-[#D4B870]" alert />}
       </div>
+    </div>
+  )
+}
+
+function Stat({ label, value, color, alert }: {
+  label: string
+  value: string | number
+  color: string
+  alert?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-[#606060]">{label}</span>
+      <span className={`text-xs font-bold font-mono tabular-nums ${color} ${alert ? 'animate-pulse' : ''}`}>
+        {value}
+      </span>
     </div>
   )
 }

@@ -13,7 +13,7 @@ export default function UserPicker({ users, onSelect }: UserPickerProps) {
   const devs = users.filter(u => u.role === 'dev')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F0F0F]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101319]">
       <div className="w-full max-w-sm px-6">
         <div className="mb-8 text-center">
           <h1 className="text-white text-xl font-semibold mb-1">CMS Job Tracker</h1>

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Job, User, JobPriority, JobStatus, sortJobs, isToday } from '@/types/job'
 import JobCard from './JobCard'
+import ZoneBlock from './ZoneBlock'
 
 interface JobBoardProps {
   jobs: Job[]
@@ -19,15 +20,19 @@ interface JobBoardProps {
   onWorkbookLinkAdd: (jobId: string, link: string) => Promise<void>
 }
 
-function SectionHeader({ title, count, alert }: { title: string; count: number; alert?: boolean }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">{title}</h2>
-      <span className={`text-xs px-1.5 py-0.5 rounded-full ${alert ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400'}`}>
-        {count}
-      </span>
-    </div>
-  )
+const ZONE_COLORS = {
+  p1: '#E24B4A',
+  progress: '#D4A843',
+  queue: '#5B9BD5',
+  done: '#5CB85C',
+}
+
+const ZONE_BADGES = {
+  p1: 'bg-[#2A1515] text-[#E87878] border border-[#4A2020]',
+  progress: 'bg-[#2A2010] text-[#D4B870] border border-[#4A3A15]',
+  progressAlert: 'bg-[#4A2020] text-[#E87878] border border-[#6A2020]',
+  queue: 'bg-[#1A3A5A] text-[#7EB8E8] border border-[#2A5A8A]',
+  done: 'bg-[#1A3A1A] text-[#7EC87E] border border-[#2A5A2A]',
 }
 
 export default function JobBoard({
@@ -57,70 +62,113 @@ export default function JobBoard({
     }
   }
 
-  return (
-    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-8">
+  function AnimatedCards({ items }: { items: Job[] }) {
+    return (
+      <AnimatePresence mode="popLayout">
+        {items.map((job, i) => (
+          <motion.div
+            key={job.id}
+            layout
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20, transition: { duration: 0.2 } }}
+            transition={{ duration: 0.3, ease: 'easeOut', delay: i * 0.04 }}
+          >
+            <JobCard {...cardProps(job, i)} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    )
+  }
 
+  return (
+    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+
+      {/* WIP cap banner */}
       <AnimatePresence>
         {wipAtCap && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-700">
-              WIP cap hit — {inProgress.length}/3 jobs in progress. Finish one before starting another.
+            <div className="bg-[#2A1515] border border-[#4A2020] rounded-lg px-4 py-2.5 text-sm text-[#E87878]">
+              ⚠ WIP cap hit — {inProgress.length}/3 jobs in progress. Finish one before starting another.
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* P1 Urgent fire alarms */}
-      {p1Alarms.length > 0 && (
-        <section>
-          <SectionHeader title="🔴 P1 Urgent" count={p1Alarms.length} alert />
-          <div className="space-y-2">
-            <AnimatePresence>
-              {p1Alarms.map((job, i) => <JobCard key={job.id} {...cardProps(job, i)} />)}
-            </AnimatePresence>
-          </div>
-        </section>
-      )}
+      {/* P1 Urgent */}
+      <AnimatePresence>
+        {p1Alarms.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
+            <ZoneBlock hoverColor={ZONE_COLORS.p1} label="P1 Urgent">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ZONE_COLORS.p1 }} />
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-white">🔴 P1 Urgent</h2>
+                <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${ZONE_BADGES.p1}`}>{p1Alarms.length}</span>
+              </div>
+              <div className="space-y-2">
+                <AnimatePresence mode="popLayout">
+                  {p1Alarms.map((job, i) => <JobCard key={job.id} {...cardProps(job, i)} />)}
+                </AnimatePresence>
+              </div>
+            </ZoneBlock>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* In Progress */}
-      <section>
-        <SectionHeader title="In Progress" count={inProgress.length} alert={wipAtCap} />
+      <ZoneBlock hoverColor={ZONE_COLORS.progress} label="In Progress">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ZONE_COLORS.progress }} />
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-white">In Progress</h2>
+          <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${wipAtCap ? ZONE_BADGES.progressAlert : ZONE_BADGES.progress}`}>
+            {inProgress.length} / 3
+          </span>
+        </div>
         {inProgress.length === 0
-          ? <p className="text-sm text-gray-400 italic">Nothing in progress</p>
-          : <div className="space-y-2">
-              <AnimatePresence>
-                {inProgress.map((job, i) => <JobCard key={job.id} {...cardProps(job, i)} />)}
-              </AnimatePresence>
-            </div>
+          ? <p className="text-sm italic text-[#606060]">Nothing in progress</p>
+          : <div className="space-y-2"><AnimatedCards items={inProgress} /></div>
         }
-      </section>
+      </ZoneBlock>
 
       {/* Queued */}
-      <section>
-        <SectionHeader title="Queued" count={queued.length} />
+      <ZoneBlock hoverColor={ZONE_COLORS.queue} label="Queued">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ZONE_COLORS.queue }} />
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-white">Queued</h2>
+          <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${ZONE_BADGES.queue}`}>{queued.length}</span>
+        </div>
         {queued.length === 0
-          ? <p className="text-sm text-gray-400 italic">Queue is clear</p>
-          : <div className="space-y-2">
-              <AnimatePresence>
-                {[...p1Regular, ...rest].map((job, i) => <JobCard key={job.id} {...cardProps(job, i)} />)}
-              </AnimatePresence>
-            </div>
+          ? <p className="text-sm italic text-[#606060]">Queue is clear</p>
+          : <div className="space-y-2"><AnimatedCards items={[...p1Regular, ...rest]} /></div>
         }
-      </section>
+      </ZoneBlock>
 
       {/* Done Today */}
-      <section>
-        <button onClick={() => setDoneExpanded(!doneExpanded)} className="flex items-center gap-2 mb-3 group">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 group-hover:text-gray-600 transition-colors">
-            Done Today
-          </h2>
-          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{doneToday.length}</span>
-          {doneExpanded ? <ChevronUp size={12} className="text-gray-400" /> : <ChevronDown size={12} className="text-gray-400" />}
+      <ZoneBlock hoverColor={ZONE_COLORS.done} label="Done Today">
+        <button
+          onClick={() => setDoneExpanded(!doneExpanded)}
+          className="flex items-center gap-2 mb-4 w-full text-left"
+        >
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ZONE_COLORS.done }} />
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-white">Done Today</h2>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${ZONE_BADGES.done}`}>{doneToday.length}</span>
+          <span className="ml-auto">
+            {doneExpanded
+              ? <ChevronUp size={13} className="text-[#EBEBEB]" />
+              : <ChevronDown size={13} className="text-[#EBEBEB]" />
+            }
+          </span>
         </button>
         <AnimatePresence>
           {doneExpanded && (
@@ -128,18 +176,19 @@ export default function JobBoard({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
               className="overflow-hidden"
             >
               {doneToday.length === 0
-                ? <p className="text-sm text-gray-400 italic">Nothing completed today</p>
-                : <div className="space-y-2 opacity-60">
-                    {doneToday.map((job, i) => <JobCard key={job.id} {...cardProps(job, i)} />)}
+                ? <p className="text-sm italic text-[#606060]">Nothing completed today</p>
+                : <div className="space-y-2 opacity-70">
+                    <AnimatedCards items={doneToday} />
                   </div>
               }
             </motion.div>
           )}
         </AnimatePresence>
-      </section>
+      </ZoneBlock>
     </div>
   )
 }

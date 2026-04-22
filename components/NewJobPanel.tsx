@@ -68,11 +68,11 @@ export default function NewJobPanel({ open, onOpenChange, onSubmit, currentUser,
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/40" onClick={() => onOpenChange(false)} />
-      <div className="w-full max-w-md bg-white h-full overflow-y-auto shadow-xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-base font-semibold text-gray-900">New Job</h2>
-          <button onClick={() => onOpenChange(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+      <div className="flex-1 bg-black/60" onClick={() => onOpenChange(false)} />
+      <div className="w-full max-w-md bg-[#161B24] h-full overflow-y-auto shadow-2xl flex flex-col border-l border-[#2A2A2A]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2A2A2A]">
+          <h2 className="text-base font-semibold text-[#F0F0F0]">New Job</h2>
+          <button onClick={() => onOpenChange(false)} className="text-[#606060] hover:text-[#A0A0A0] transition-colors"><X size={18} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 px-6 py-5 space-y-4">
@@ -147,7 +147,7 @@ export default function NewJobPanel({ open, onOpenChange, onSubmit, currentUser,
 
           <div className="pt-2">
             <button type="submit" disabled={submitting}
-              className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors">
+              className="w-full py-2.5 bg-[#1A3A5A] text-[#7EB8E8] border border-[#2A5A8A] text-sm font-semibold rounded-lg hover:bg-[#2A4A6A] disabled:opacity-50 transition-colors">
               {submitting ? 'Creating…' : 'Push to Queue'}
             </button>
           </div>
@@ -162,17 +162,17 @@ function Field({ label, error, hint, required, children }: {
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-700 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      <label className="block text-xs font-medium text-[#A0A0A0] mb-1">
+        {label}{required && <span className="text-[#E87878] ml-0.5">*</span>}
       </label>
       {children}
-      {hint && !error && <p className="text-xs text-gray-400 mt-0.5">{hint}</p>}
-      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+      {hint && !error && <p className="text-xs text-[#606060] mt-0.5">{hint}</p>}
+      {error && <p className="text-xs text-[#E87878] mt-0.5">{error}</p>}
     </div>
   )
 }
 
 function inp(error?: string) {
-  return `w-full text-sm border rounded-md px-3 py-2 focus:outline-none focus:ring-1 transition-colors
-    ${error ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-gray-400'}`
+  return `w-full text-sm bg-[#1E1E1E] border rounded-md px-3 py-2 text-[#F0F0F0] placeholder-[#606060] focus:outline-none focus:ring-1 transition-colors
+    ${error ? 'border-[#5A2020] focus:ring-[#4A1515]' : 'border-[#333] focus:ring-[#444]'}`
 }

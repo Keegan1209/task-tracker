@@ -136,7 +136,7 @@ export default function Home() {
 
   if (loading || !currentUser) {
     return (
-      <div className="fixed inset-0 bg-[#0F0F0F] flex items-center justify-center">
+      <div className="fixed inset-0 bg-[#101319] flex items-center justify-center">
         <p className="text-gray-500 text-sm">Loading…</p>
       </div>
     )
@@ -145,12 +145,15 @@ export default function Home() {
   const isAM = currentUser.role === 'am' || currentUser.role === 'admin'
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FAFAFA]">
+    <div className="flex h-screen overflow-hidden bg-bg-base">
       {/* Sidebar */}
-      <aside className="w-52 bg-[#0F0F0F] flex flex-col shrink-0">
+      <aside className="w-52 bg-[#101319] flex flex-col shrink-0 border-r border-white/10">
         <div className="px-5 py-5 border-b border-white/10">
-          <h1 className="text-white font-semibold text-sm tracking-tight">CMS Job Tracker</h1>
-          <p className="text-gray-500 text-xs mt-0.5">Ogilvy CMS Team</p>
+          <img
+            src="/audi-rings-white.png"
+            alt="Audi"
+            className="h-8 w-auto object-contain"
+          />
         </div>
 
         <nav className="flex-1 px-3 py-4">
@@ -182,11 +185,11 @@ export default function Home() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 shrink-0">
+      <main className="flex-1 flex flex-col overflow-hidden bg-bg-base">
+        <header className="flex items-center justify-between px-6 py-3 bg-bg-surface border-b border-border-subtle shrink-0">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Job Board</h2>
-            <p className="text-xs text-gray-400">
+            <h2 className="text-sm font-semibold text-text-primary">Job Board</h2>
+            <p className="text-xs text-text-secondary">
               {new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
@@ -194,7 +197,7 @@ export default function Home() {
             {isAM && (
               <button
                 onClick={() => setNewJobOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-text-primary bg-bg-elevated border border-border-default rounded-md hover:bg-bg-hover transition-colors"
               >
                 <Plus size={14} />
                 New Job

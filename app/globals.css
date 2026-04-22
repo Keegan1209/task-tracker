@@ -6,7 +6,23 @@
   * {
     box-sizing: border-box;
   }
-  body {
-    @apply bg-[#FAFAFA] text-gray-900 font-sans;
+  html, body {
+    background-color: #101319;
+    color: #F0F0F0;
+    font-family: Tahoma, Verdana, Geneva, sans-serif;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #161616;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #444;
   }
 }

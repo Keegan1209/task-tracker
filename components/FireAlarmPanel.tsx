@@ -57,30 +57,30 @@ export default function FireAlarmPanel({ open, onOpenChange, onSubmit, currentUs
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/40" onClick={() => onOpenChange(false)} />
-      <div className="w-full max-w-sm bg-white h-full overflow-y-auto shadow-xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-red-100 bg-red-50">
+      <div className="flex-1 bg-black/60" onClick={() => onOpenChange(false)} />
+      <div className="w-full max-w-sm bg-[#161B24] h-full overflow-y-auto shadow-2xl flex flex-col border-l border-[#2A2A2A]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#3A1515] bg-[#1E0A0A]">
           <div className="flex items-center gap-2">
-            <Flame size={18} className="text-red-600" />
-            <h2 className="text-base font-semibold text-red-900">Raise Urgent P1</h2>
+            <Flame size={18} className="text-[#E87878]" />
+            <h2 className="text-base font-semibold text-[#E87878]">Raise Urgent P1</h2>
           </div>
-          <button onClick={() => onOpenChange(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+          <button onClick={() => onOpenChange(false)} className="text-[#606060] hover:text-[#A0A0A0] transition-colors"><X size={18} /></button>
         </div>
 
-        <div className="px-6 py-3 bg-red-50 border-b border-red-100">
-          <p className="text-xs text-red-700">Goes straight to the top of the queue. Add Workbook link now or after.</p>
+        <div className="px-6 py-3 bg-[#1E0A0A] border-b border-[#3A1515]">
+          <p className="text-xs text-[#D4B870]">Goes straight to the top of the queue. Add Workbook link now or after.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 px-6 py-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Client</label>
-            <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700 font-medium">
+            <label className="block text-xs font-medium text-[#A0A0A0] mb-1">Client</label>
+            <div className="px-3 py-2 bg-[#1E1E1E] border border-[#333] rounded-md text-sm text-[#A0A0A0] font-medium">
               Audi
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">What&apos;s broken / the ask <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-medium text-[#A0A0A0] mb-1">What&apos;s broken / the ask <span className="text-[#E87878]">*</span></label>
             <textarea
               className={inp(errors.description)}
               rows={4}
@@ -88,11 +88,11 @@ export default function FireAlarmPanel({ open, onOpenChange, onSubmit, currentUs
               onChange={e => set('description', e.target.value)}
               placeholder="Describe the issue or request in as much detail as needed…"
             />
-            {errors.description && <p className="text-xs text-red-500 mt-0.5">{errors.description}</p>}
+            {errors.description && <p className="text-xs text-[#E87878] mt-0.5">{errors.description}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Assign to</label>
+            <label className="block text-xs font-medium text-[#A0A0A0] mb-1">Assign to</label>
             <select className={inp()} value={form.assigned_to} onChange={e => set('assigned_to', e.target.value)}>
               <option value="all">All Devs</option>
               {devs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -100,14 +100,14 @@ export default function FireAlarmPanel({ open, onOpenChange, onSubmit, currentUs
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Workbook link <span className="text-gray-400">(optional)</span></label>
+            <label className="block text-xs font-medium text-[#A0A0A0] mb-1">Workbook link <span className="text-[#606060]">(optional)</span></label>
             <input className={inp(errors.workbook_link)} value={form.workbook_link} onChange={e => set('workbook_link', e.target.value)} placeholder={`${WORKBOOK_PREFIX}...`} />
-            {errors.workbook_link && <p className="text-xs text-red-500 mt-0.5">{errors.workbook_link}</p>}
+            {errors.workbook_link && <p className="text-xs text-[#E87878] mt-0.5">{errors.workbook_link}</p>}
           </div>
 
           <div className="pt-2">
             <button type="submit" disabled={submitting}
-              className="w-full py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors">
+              className="w-full py-2.5 bg-[#3A1515] text-[#E87878] border border-[#5A2020] text-sm font-semibold rounded-lg hover:bg-[#4A1515] disabled:opacity-50 transition-colors">
               {submitting ? 'Raising…' : '🔴 Raise Urgent'}
             </button>
           </div>
@@ -118,6 +118,6 @@ export default function FireAlarmPanel({ open, onOpenChange, onSubmit, currentUs
 }
 
 function inp(error?: string) {
-  return `w-full text-sm border rounded-md px-3 py-2 focus:outline-none focus:ring-1 transition-colors
-    ${error ? 'border-red-400 focus:ring-red-300' : 'border-gray-300 focus:ring-gray-400'}`
+  return `w-full text-sm bg-[#1E1E1E] border rounded-md px-3 py-2 text-[#F0F0F0] placeholder-[#606060] focus:outline-none focus:ring-1 transition-colors
+    ${error ? 'border-[#5A2020] focus:ring-[#4A1515]' : 'border-[#333] focus:ring-[#444]'}`
 }

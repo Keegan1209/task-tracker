@@ -20,22 +20,28 @@ interface JobCardProps {
   wipAtCap: boolean
 }
 
-const PRIORITY_BORDER: Record<JobPriority, string> = {
-  p1: 'border-l-[#E24B4A]',
-  p2: 'border-l-[#EF9F27]',
-  p3: 'border-l-[#D1D5DB]',
+const PRIORITY_LEFT_COLOR: Record<JobPriority, string> = {
+  p1: '#E24B4A',
+  p2: '#D4A843',
+  p3: '#444444',
 }
 
 const PRIORITY_BADGE: Record<JobPriority, string> = {
-  p1: 'bg-red-100 text-red-700',
-  p2: 'bg-amber-100 text-amber-700',
-  p3: 'bg-gray-100 text-gray-500',
+  p1: 'bg-[#2A1515] text-[#E87878] border border-[#4A2020]',
+  p2: 'bg-[#2A2010] text-[#D4B870] border border-[#4A3A15]',
+  p3: 'bg-[#1E1E1E] text-[#EBEBEB] border border-[#444]',
 }
 
 const STATUS_LABELS: Record<JobStatus, string> = {
   'queued': 'Queued',
   'in-progress': 'In Progress',
   'done': 'Done',
+}
+
+const STATUS_ACTIVE: Record<JobStatus, string> = {
+  'queued': 'bg-[#1A3A5A] text-[#7EB8E8] border-[#2A5A8A] cursor-default',
+  'in-progress': 'bg-[#1A3A1A] text-[#7EC87E] border-[#2A5A2A] cursor-default',
+  'done': 'bg-[#1A2A1A] text-[#5A9A5A] border-[#2A4A2A] cursor-default',
 }
 
 function formatTime(iso: string): string {
@@ -46,11 +52,11 @@ function formatTime(iso: string): string {
 }
 
 export default function JobCard({
-  job, currentUser, users, index,
+  job, currentUser, users,
   onStart, onDone, onDelete, onPriorityChange, onStatusChange,
   onDescriptionUpdate, onWorkbookLinkAdd,
   wipAtCap,
-}: JobCardProps) {
+}: Omit<JobCardProps, 'index'> & { index: number }) {
   const [expanded, setExpanded] = useState(false)
   const [addingLink, setAddingLink] = useState(false)
   const [linkInput, setLinkInput] = useState('')
@@ -59,6 +65,7 @@ export default function JobCard({
   const [editingDesc, setEditingDesc] = useState(false)
   const [descInput, setDescInput] = useState(job.description || '')
   const [savingDesc, setSavingDesc] = useState(false)
+  const [hovered, setHovered] = useState(false)
 
   const overdue = isOverdue(job)
   const isAM = currentUser.role === 'am' || currentUser.role === 'admin'
@@ -80,7 +87,7 @@ export default function JobCard({
 
   async function handleAction(fn: () => Promise<void>) {
     setFlashing(true)
-    setTimeout(() => setFlashing(false), 700)
+    setTimeout(() => setFlashing(false), 600)
     await fn()
   }
 
@@ -102,20 +109,24 @@ export default function JobCard({
     setEditingDesc(false)
   }
 
+  const borderLeftColor = hovered ? PRIORITY_LEFT_COLOR[job.priority] : '#2A2A2A'
+
   return (
     <motion.div
-      custom={index}
-      initial={{ opacity: 0, y: 8 }}
-      animate={flashing
-        ? { backgroundColor: ['#ffffff', '#f0fdf4', '#ffffff'] as unknown as string }
-        : { opacity: 1, y: 0, transition: { delay: index * 0.04, duration: 0.2 } }
-      }
-      className={`
-        bg-white border border-[#E5E7EB] border-l-4 rounded-lg
-        ${PRIORITY_BORDER[job.priority]}
-        ${job.is_fire_alarm ? 'bg-[#FFF5F5]' : ''}
-        hover:border-[#D1D5DB] hover:shadow-sm transition-all
-      `}
+      layout
+      animate={flashing ? {
+        backgroundColor: ['#1E2535', '#1A2A1A', '#1E2535'],
+        transition: { duration: 0.6 },
+      } : { backgroundColor: '#1E2535' }}
+      style={{
+        backgroundColor: '#1E2535',
+        border: '1px solid #2A3347',
+        borderLeft: `4px solid ${borderLeftColor}`,
+        borderRadius: '10px',
+        transition: 'border-left-color 0.2s ease',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Collapsed row */}
       <div
@@ -123,36 +134,36 @@ export default function JobCard({
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
             <motion.span
               animate={isPulsing ? {
-                boxShadow: ['0 0 0 0 rgba(226,75,74,0.4)', '0 0 0 8px rgba(226,75,74,0)'],
+                boxShadow: ['0 0 0 0 rgba(226,75,74,0.5)', '0 0 0 8px rgba(226,75,74,0)'],
                 transition: { duration: 1.2, repeat: Infinity },
               } : {}}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${PRIORITY_BADGE[job.priority]}`}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${PRIORITY_BADGE[job.priority]}`}
             >
               {job.is_fire_alarm && <Flame size={9} />}
               {job.priority.toUpperCase()}
             </motion.span>
 
             {overdue && (
-              <span className="inline-flex items-center gap-1 text-xs text-red-500 font-medium">
+              <span className="inline-flex items-center gap-1 text-xs text-[#E87878] font-medium">
                 <AlertCircle size={10} />
                 Overdue
               </span>
             )}
           </div>
 
-          <p className="text-sm font-medium text-gray-900 truncate">{job.title}</p>
+          <p className="text-sm font-semibold text-white truncate">{job.title}</p>
 
-          <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
+          <div className="flex items-center gap-2 mt-0.5 text-xs text-[#EBEBEB]">
             <span>{assignedUser ? assignedUser.name : 'All Devs'}</span>
             <span>·</span>
             <span>{formatTime(job.created_at)}</span>
             {job.started_at && (
               <>
                 <span>·</span>
-                <span>Started {formatTime(job.started_at)}</span>
+                <span className="text-[#D4B870]">Started {formatTime(job.started_at)}</span>
               </>
             )}
           </div>
@@ -162,23 +173,26 @@ export default function JobCard({
           {canStart && (
             <button
               onClick={e => { e.stopPropagation(); handleAction(() => onStart(job.id)) }}
-              className="px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-md hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold bg-[#1A3A5A] text-[#7EB8E8] border border-[#2A5A8A] rounded-md hover:bg-[#2A4A6A] transition-colors"
             >
-              Start
+              Start →
             </button>
           )}
           {wipAtCap && isDev && job.status === 'queued' && (
-            <span className="text-xs text-gray-400 italic">WIP cap</span>
+            <span className="text-xs text-[#EBEBEB] italic">WIP cap</span>
           )}
           {canDone && (
             <button
               onClick={e => { e.stopPropagation(); handleAction(() => onDone(job.id)) }}
-              className="px-3 py-1.5 text-xs font-semibold bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold bg-[#1A3A1A] text-[#7EC87E] border border-[#2A5A2A] rounded-md hover:bg-[#2A4A2A] transition-colors"
             >
               Done ✓
             </button>
           )}
-          {expanded ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
+          {expanded
+            ? <ChevronUp size={14} className="text-[#EBEBEB]" />
+            : <ChevronDown size={14} className="text-[#EBEBEB]" />
+          }
         </div>
       </div>
 
@@ -189,19 +203,19 @@ export default function JobCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
+            <div className="px-4 pb-4 border-t border-[#2A2A2A] pt-3 space-y-3">
 
-              {/* Description — editable by both roles */}
+              {/* Description */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-medium text-gray-500">Description</p>
+                  <p className="text-xs font-medium text-[#EBEBEB]">Description</p>
                   {!editingDesc && (
                     <button
                       onClick={() => { setDescInput(job.description || ''); setEditingDesc(true) }}
-                      className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                      className="inline-flex items-center gap-1 text-xs text-[#EBEBEB] hover:text-white transition-colors"
                     >
                       <Pencil size={11} />
                       Edit
@@ -215,21 +229,21 @@ export default function JobCard({
                       rows={3}
                       value={descInput}
                       onChange={e => setDescInput(e.target.value)}
-                      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-gray-400 resize-none"
+                      className="w-full text-sm bg-[#161B24] border border-[#333] text-[#EBEBEB] rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#444] resize-none placeholder-[#888]"
                       placeholder="Add context for the dev…"
                     />
                     <div className="flex gap-2">
                       <button
                         onClick={handleDescSave}
                         disabled={savingDesc}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-900 text-white text-xs rounded hover:bg-gray-700 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#1A3A1A] text-[#7EC87E] border border-[#2A5A2A] text-xs rounded hover:bg-[#2A4A2A] disabled:opacity-50 transition-colors"
                       >
                         <Check size={11} />
                         {savingDesc ? 'Saving…' : 'Save'}
                       </button>
                       <button
                         onClick={() => setEditingDesc(false)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded hover:border-gray-300"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-[#EBEBEB] hover:text-white border border-[#2A2A2A] rounded hover:border-[#3A3A3A] transition-colors"
                       >
                         <X size={11} />
                         Cancel
@@ -237,15 +251,15 @@ export default function JobCard({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-600">
-                    {job.description || <span className="text-gray-400 italic">No description</span>}
+                  <p className="text-sm text-[#EBEBEB]">
+                    {job.description || <span className="text-[#888] italic">No description</span>}
                   </p>
                 )}
               </div>
 
               {/* Fire alarm banner */}
               {job.is_fire_alarm && !job.workbook_link && (
-                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+                <div className="text-xs text-[#D4B870] bg-[#2A2010] border border-[#4A3A15] rounded px-2 py-1.5">
                   🔥 Remember to add the Workbook link
                 </div>
               )}
@@ -256,7 +270,7 @@ export default function JobCard({
                   href={job.workbook_link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1C2230] text-[#EBEBEB] border border-[#3A3A3A] text-sm font-medium rounded-md hover:bg-[#252D3D] hover:text-white transition-colors"
                 >
                   Open in Workbook
                   <ExternalLink size={12} />
@@ -271,17 +285,17 @@ export default function JobCard({
                           value={linkInput}
                           onChange={e => { setLinkInput(e.target.value); setLinkError('') }}
                           placeholder={`${WORKBOOK_PREFIX}...`}
-                          className="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                          className="flex-1 text-xs bg-[#161B24] border border-[#333] text-[#EBEBEB] rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#444] placeholder-[#888]"
                         />
-                        <button onClick={handleLinkSave} className="px-2 py-1 bg-gray-900 text-white text-xs rounded hover:bg-gray-700">Save</button>
-                        <button onClick={() => { setAddingLink(false); setLinkError('') }} className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                        <button onClick={handleLinkSave} className="px-2 py-1 bg-[#1A3A1A] text-[#7EC87E] border border-[#2A5A2A] text-xs rounded hover:bg-[#2A4A2A] transition-colors">Save</button>
+                        <button onClick={() => { setAddingLink(false); setLinkError('') }} className="px-2 py-1 text-xs text-[#EBEBEB] hover:text-white border border-[#2A2A2A] rounded transition-colors">Cancel</button>
                       </div>
-                      {linkError && <p className="text-xs text-red-500">{linkError}</p>}
+                      {linkError && <p className="text-xs text-[#E87878]">{linkError}</p>}
                     </div>
                   ) : (
                     <button
                       onClick={() => setAddingLink(true)}
-                      className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 border border-dashed border-gray-300 rounded px-2 py-1.5 hover:border-gray-400 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs text-[#EBEBEB] hover:text-white border border-dashed border-[#3A3A3A] rounded px-2 py-1.5 hover:border-[#555] transition-colors"
                     >
                       <Link size={11} />
                       Add Workbook link
@@ -293,11 +307,11 @@ export default function JobCard({
               {/* Asset links */}
               {job.asset_links && job.asset_links.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 mb-1">Assets</p>
+                  <p className="text-xs font-medium text-[#EBEBEB] mb-1">Assets</p>
                   <div className="flex flex-wrap gap-2">
                     {job.asset_links.map((link, i) => (
                       <a key={i} href={link} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
+                        className="inline-flex items-center gap-1 text-xs text-[#5B9BD5] hover:text-[#7EB8E8] transition-colors">
                         <ExternalLink size={10} />
                         Asset {i + 1}
                       </a>
@@ -307,17 +321,17 @@ export default function JobCard({
               )}
 
               {/* Meta */}
-              <div className="text-xs text-gray-400 space-y-0.5">
-                <div>Assigned to: <span className="text-gray-600">{assignedUser ? assignedUser.name : 'All Devs'}</span></div>
-                <div>Created by: <span className="text-gray-600">{createdByUser?.name || '—'}</span></div>
-                <div>Created: <span className="text-gray-600">{formatTime(job.created_at)}</span></div>
-                {job.started_at && <div>Started: <span className="text-gray-600">{formatTime(job.started_at)}</span></div>}
-                {job.completed_at && <div>Completed: <span className="text-gray-600">{formatTime(job.completed_at)}</span></div>}
+              <div className="text-xs text-[#EBEBEB] space-y-0.5">
+                <div>Assigned to: <span className="text-white">{assignedUser ? assignedUser.name : 'All Devs'}</span></div>
+                <div>Created by: <span className="text-white">{createdByUser?.name || '—'}</span></div>
+                <div>Created: <span className="text-white">{formatTime(job.created_at)}</span></div>
+                {job.started_at && <div>Started: <span className="text-[#7EC87E]">{formatTime(job.started_at)}</span></div>}
+                {job.completed_at && <div>Completed: <span className="text-[#5CB85C]">{formatTime(job.completed_at)}</span></div>}
               </div>
 
-              {/* Update status — available to both AM and Dev */}
-              <div className="pt-2 border-t border-gray-100">
-                <p className="text-xs font-medium text-gray-500 mb-1.5">Update status</p>
+              {/* Update status */}
+              <div className="pt-2 border-t border-[#2A2A2A]">
+                <p className="text-xs font-medium text-[#EBEBEB] mb-1.5">Update status</p>
                 <div className="flex gap-1.5">
                   {(['queued', 'in-progress', 'done'] as JobStatus[]).map(s => (
                     <button
@@ -326,10 +340,8 @@ export default function JobCard({
                       disabled={job.status === s}
                       className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors
                         ${job.status === s
-                          ? s === 'queued' ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-default'
-                            : s === 'in-progress' ? 'bg-green-100 text-green-700 border-green-200 cursor-default'
-                            : 'bg-blue-100 text-blue-700 border-blue-200 cursor-default'
-                          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-700'
+                          ? STATUS_ACTIVE[s]
+                          : 'bg-[#1C2230] text-[#EBEBEB] border-[#3A3A3A] hover:border-[#555] hover:text-white'
                         }`}
                     >
                       {STATUS_LABELS[s]}
@@ -340,18 +352,18 @@ export default function JobCard({
 
               {/* AM-only: priority + delete */}
               {isAM && (
-                <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+                <div className="flex items-center gap-2 pt-1 border-t border-[#2A2A2A]">
                   <div className="flex gap-1">
                     {(['p1', 'p2', 'p3'] as const).map(p => (
                       <button
                         key={p}
                         onClick={() => onPriorityChange(job.id, p)}
-                        className={`px-2 py-0.5 text-xs font-medium rounded transition-colors
+                        className={`px-2 py-0.5 text-xs font-bold rounded transition-colors
                           ${job.priority === p
-                            ? p === 'p1' ? 'bg-red-600 text-white'
-                              : p === 'p2' ? 'bg-amber-500 text-white'
-                              : 'bg-gray-600 text-white'
-                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            ? p === 'p1' ? 'bg-[#4A1515] text-[#E87878] border border-[#6A2020]'
+                              : p === 'p2' ? 'bg-[#3A2A10] text-[#D4B870] border border-[#5A4A20]'
+                              : 'bg-[#2A2A2A] text-[#EBEBEB] border border-[#3A3A3A]'
+                            : 'bg-[#1C2230] text-[#EBEBEB] border border-[#3A3A3A] hover:border-[#555] hover:text-white'
                           }`}
                       >
                         {p.toUpperCase()}
@@ -361,7 +373,7 @@ export default function JobCard({
                   <div className="flex-1" />
                   <button
                     onClick={() => onDelete(job.id)}
-                    className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors"
+                    className="inline-flex items-center gap-1 text-xs text-[#EBEBEB] hover:text-[#E87878] transition-colors"
                   >
                     <Trash2 size={12} />
                     Delete
