@@ -17,36 +17,38 @@ export default function StatsStrip({ jobs }: StatsStripProps) {
   const overdue = jobs.filter(j => isOverdue(j)).length
   const atCap = inProgress >= 3
 
-  return (
-    <div className="bg-[#101319] border-b border-[#2A2A2A]">
-      <div className="flex items-center px-6 py-2.5 gap-6 flex-wrap">
-        <Stat label="Queued" value={queued} color="text-[#7EB8E8]" />
-        <Stat
-          label="In Progress"
-          value={`${inProgress} / 3`}
-          color={atCap ? 'text-[#E87878]' : 'text-[#7EC87E]'}
-          alert={atCap}
-        />
-        <Stat label="Done Today" value={doneToday} color="text-[#5A9A5A]" />
-        {p1Open > 0 && <Stat label="P1 Open" value={p1Open} color="text-[#E87878]" alert />}
-        {overdue > 0 && <Stat label="Overdue" value={overdue} color="text-[#D4B870]" alert />}
-      </div>
-    </div>
-  )
-}
+  const stats = [
+    { label: 'Queued', value: String(queued), color: 'text-[#7EB8E8]', alert: false },
+    {
+      label: 'In Progress',
+      value: `${inProgress} / 3`,
+      color: atCap ? 'text-[#E87878]' : 'text-[#7EC87E]',
+      alert: atCap,
+    },
+    { label: 'Done Today', value: String(doneToday), color: 'text-[#5A9A5A]', alert: false },
+    ...(p1Open > 0 ? [{ label: 'P1 Open', value: String(p1Open), color: 'text-[#E87878]', alert: true }] : []),
+    ...(overdue > 0 ? [{ label: 'Overdue', value: String(overdue), color: 'text-[#D4B870]', alert: true }] : []),
+  ]
 
-function Stat({ label, value, color, alert }: {
-  label: string
-  value: string | number
-  color: string
-  alert?: boolean
-}) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-[#606060]">{label}</span>
-      <span className={`text-xs font-bold font-mono tabular-nums ${color} ${alert ? 'animate-pulse' : ''}`}>
-        {value}
-      </span>
+    <div className="bg-[#0D1017] border-b border-[#1E2535]">
+      <div className="flex items-center px-6 py-3 gap-0 flex-wrap">
+        {stats.map((stat, i) => (
+          <div key={stat.label} className="flex items-center">
+            <div className="flex items-center gap-2.5 px-4">
+              <span className="text-[11px] font-medium text-[#505060] uppercase tracking-wider">{stat.label}</span>
+              <span
+                className={`text-sm font-bold font-mono tabular-nums ${stat.color} ${stat.alert ? 'animate-pulse' : ''}`}
+              >
+                {stat.value}
+              </span>
+            </div>
+            {i < stats.length - 1 && (
+              <div className="w-px h-4 bg-[#252D3D]" />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

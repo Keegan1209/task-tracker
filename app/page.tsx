@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import { Flame, Plus, LogOut } from 'lucide-react'
 import { Job, User, JobPriority, JobStatus, CreateJobPayload, FireAlarmPayload } from '@/types/job'
 import { fetchUsers, getSessionUser, setSessionUser, clearSessionUser } from '@/lib/users'
@@ -10,6 +11,26 @@ import StatsStrip from '@/components/StatsStrip'
 import JobBoard from '@/components/JobBoard'
 import NewJobPanel from '@/components/NewJobPanel'
 import FireAlarmPanel from '@/components/FireAlarmPanel'
+
+function RaiseUrgentButton({ hasP1, onClick }: { hasP1: boolean; onClick: () => void }) {
+  return (
+    <motion.button
+      onClick={onClick}
+      animate={!hasP1 ? {
+        boxShadow: [
+          '0 0 0 0 rgba(220,38,38,0)',
+          '0 0 0 6px rgba(220,38,38,0.25)',
+          '0 0 0 0 rgba(220,38,38,0)',
+        ],
+      } : {}}
+      transition={!hasP1 ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } : {}}
+      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+    >
+      <Flame size={14} />
+      Raise Urgent
+    </motion.button>
+  )
+}
 
 export default function Home() {
   const [users, setUsers] = useState<User[]>([])
@@ -147,8 +168,13 @@ export default function Home() {
   return (
     <div className="flex h-screen overflow-hidden bg-bg-base">
       {/* Sidebar */}
-      <aside className="w-52 bg-[#101319] flex flex-col shrink-0 border-r border-white/10">
-        <div className="px-5 py-5 border-b border-white/10">
+      <aside
+        className="w-52 flex flex-col shrink-0 border-r border-white/5"
+        style={{
+          background: 'linear-gradient(180deg, #0E1219 0%, #101520 60%, #0C1018 100%)',
+        }}
+      >
+        <div className="px-5 py-5 border-b border-white/5">
           <img
             src="/audi-rings-white.png"
             alt="Audi"
@@ -163,7 +189,7 @@ export default function Home() {
         </nav>
 
         {/* Current user */}
-        <div className="px-4 py-4 border-t border-white/10">
+        <div className="px-4 py-4 border-t border-white/5">
           <div className="flex items-center gap-2 mb-3">
             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0
               ${currentUser.role === 'admin' ? 'bg-purple-600' : currentUser.role === 'am' ? 'bg-indigo-600' : 'bg-emerald-600'}`}>
@@ -197,19 +223,16 @@ export default function Home() {
             {isAM && (
               <button
                 onClick={() => setNewJobOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-text-primary bg-bg-elevated border border-border-default rounded-md hover:bg-bg-hover transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#C0C0C0] bg-transparent border border-white/10 rounded-md hover:border-white/20 hover:text-white hover:-translate-y-px transition-all duration-150"
               >
                 <Plus size={14} />
                 New Job
               </button>
             )}
-            <button
+            <RaiseUrgentButton
+              hasP1={jobs.some(j => j.priority === 'p1' && j.status !== 'done')}
               onClick={() => setFireAlarmOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
-            >
-              <Flame size={14} />
-              Raise Urgent
-            </button>
+            />
           </div>
         </header>
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Inbox, PlayCircle, CheckCircle } from 'lucide-react'
 import { Job, User, JobPriority, JobStatus, sortJobs, isToday } from '@/types/job'
 import JobCard from './JobCard'
 import ZoneBlock from './ZoneBlock'
@@ -33,6 +33,15 @@ const ZONE_BADGES = {
   progressAlert: 'bg-[#4A2020] text-[#E87878] border border-[#6A2020]',
   queue: 'bg-[#1A3A5A] text-[#7EB8E8] border border-[#2A5A8A]',
   done: 'bg-[#1A3A1A] text-[#7EC87E] border border-[#2A5A2A]',
+}
+
+function EmptyState({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-8 gap-2 opacity-40">
+      <Icon size={22} className="text-[#606060]" />
+      <p className="text-xs text-[#606060] font-medium">{label}</p>
+    </div>
+  )
 }
 
 export default function JobBoard({
@@ -112,7 +121,7 @@ export default function JobBoard({
           >
             <ZoneBlock hoverColor={ZONE_COLORS.p1} label="P1 Urgent">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ZONE_COLORS.p1 }} />
+                <div className="w-2 h-2 rounded-full bg-[#E24B4A]" />
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-white">🔴 P1 Urgent</h2>
                 <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${ZONE_BADGES.p1}`}>{p1Alarms.length}</span>
               </div>
@@ -129,14 +138,14 @@ export default function JobBoard({
       {/* In Progress */}
       <ZoneBlock hoverColor={ZONE_COLORS.progress} label="In Progress">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ZONE_COLORS.progress }} />
+          <div className="w-2 h-2 rounded-full bg-[#D4A843]" />
           <h2 className="text-xs font-semibold uppercase tracking-widest text-white">In Progress</h2>
           <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${wipAtCap ? ZONE_BADGES.progressAlert : ZONE_BADGES.progress}`}>
             {inProgress.length} / 3
           </span>
         </div>
         {inProgress.length === 0
-          ? <p className="text-sm italic text-[#606060]">Nothing in progress</p>
+          ? <EmptyState icon={PlayCircle} label="Nothing in progress" />
           : <div className="space-y-2"><AnimatedCards items={inProgress} /></div>
         }
       </ZoneBlock>
@@ -144,12 +153,12 @@ export default function JobBoard({
       {/* Queued */}
       <ZoneBlock hoverColor={ZONE_COLORS.queue} label="Queued">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ZONE_COLORS.queue }} />
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-white">Queued</h2>
+          <div className="w-2 h-2 rounded-full bg-[#5B9BD5]" />
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-[#EBEBEB]">Queued</h2>
           <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${ZONE_BADGES.queue}`}>{queued.length}</span>
         </div>
         {queued.length === 0
-          ? <p className="text-sm italic text-[#606060]">Queue is clear</p>
+          ? <EmptyState icon={Inbox} label="Queue is clear" />
           : <div className="space-y-2"><AnimatedCards items={[...p1Regular, ...rest]} /></div>
         }
       </ZoneBlock>
@@ -160,8 +169,8 @@ export default function JobBoard({
           onClick={() => setDoneExpanded(!doneExpanded)}
           className="flex items-center gap-2 mb-4 w-full text-left"
         >
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ZONE_COLORS.done }} />
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-white">Done Today</h2>
+          <div className="w-2 h-2 rounded-full bg-[#5CB85C]" />
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-[#EBEBEB]">Done Today</h2>
           <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${ZONE_BADGES.done}`}>{doneToday.length}</span>
           <span className="ml-auto">
             {doneExpanded
@@ -180,7 +189,7 @@ export default function JobBoard({
               className="overflow-hidden"
             >
               {doneToday.length === 0
-                ? <p className="text-sm italic text-[#606060]">Nothing completed today</p>
+                ? <EmptyState icon={CheckCircle} label="Nothing completed today" />
                 : <div className="space-y-2 opacity-70">
                     <AnimatedCards items={doneToday} />
                   </div>

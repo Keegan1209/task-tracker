@@ -20,17 +20,25 @@ interface JobCardProps {
   wipAtCap: boolean
 }
 
+// Left border colour — always visible, 3px
 const PRIORITY_LEFT_COLOR: Record<JobPriority, string> = {
   p1: '#E24B4A',
   p2: '#D4A843',
   p3: '#444444',
 }
 
+// Pill badge — soft fill matching border colour
 const PRIORITY_BADGE: Record<JobPriority, string> = {
   p1: 'bg-[#2A1515] text-[#E87878] border border-[#4A2020]',
   p2: 'bg-[#2A2010] text-[#D4B870] border border-[#4A3A15]',
-  p3: 'bg-[#1E1E1E] text-[#EBEBEB] border border-[#444]',
+  p3: 'bg-[#1E1E1E] text-[#888780] border border-[#333]',
 }
+
+// Avatar background per user role / index
+const AVATAR_COLORS = [
+  'bg-emerald-700', 'bg-indigo-700', 'bg-violet-700',
+  'bg-sky-700', 'bg-rose-700', 'bg-amber-700', 'bg-teal-700',
+]
 
 const STATUS_LABELS: Record<JobStatus, string> = {
   'queued': 'Queued',
@@ -49,6 +57,34 @@ function formatTime(iso: string): string {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
+}
+
+function formatTimeShort(iso: string): string {
+  return new Date(iso).toLocaleString('en-ZA', {
+    day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
+
+function Avatar({ user, index }: { user: User; index: number }) {
+  const colorClass = AVATAR_COLORS[index % AVATAR_COLORS.length]
+  return (
+    <div
+      title={user.name}
+      className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 ${colorClass}`}
+    >
+      {getInitials(user.name)}
+    </div>
+  )
 }
 
 export default function JobCard({
@@ -76,6 +112,11 @@ export default function JobCard({
   const assignedUser = job.assigned_to === 'all'
     ? null
     : users.find(u => u.id === job.assigned_to)
+
+  const assignedUserIndex = assignedUser
+    ? users.findIndex(u => u.id === assignedUser.id)
+    : 0
+
   const createdByUser = users.find(u => u.id === job.created_by)
 
   const canStart = isDev && job.status === 'queued' &&
@@ -109,8 +150,6 @@ export default function JobCard({
     setEditingDesc(false)
   }
 
-  const borderLeftColor = hovered ? PRIORITY_LEFT_COLOR[job.priority] : '#2A2A2A'
-
   return (
     <motion.div
       layout
@@ -121,9 +160,10 @@ export default function JobCard({
       style={{
         backgroundColor: '#1E2535',
         border: '1px solid #2A3347',
-        borderLeft: `4px solid ${borderLeftColor}`,
+        borderLeft: `3px solid ${PRIORITY_LEFT_COLOR[job.priority]}`,
         borderRadius: '10px',
-        transition: 'border-left-color 0.2s ease',
+        transition: 'box-shadow 0.2s ease',
+        boxShadow: hovered ? '0 2px 12px rgba(0,0,0,0.35)' : 'none',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -135,6 +175,7 @@ export default function JobCard({
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
+            {/* Priority pill */}
             <motion.span
               animate={isPulsing ? {
                 boxShadow: ['0 0 0 0 rgba(226,75,74,0.5)', '0 0 0 8px rgba(226,75,74,0)'],
@@ -156,20 +197,40 @@ export default function JobCard({
 
           <p className="text-sm font-semibold text-white truncate">{job.title}</p>
 
-          <div className="flex items-center gap-2 mt-0.5 text-xs text-[#EBEBEB]">
-            <span>{assignedUser ? assignedUser.name : 'All Devs'}</span>
-            <span>·</span>
-            <span>{formatTime(job.created_at)}</span>
-            {job.started_at && (
-              <>
-                <span>·</span>
-                <span className="text-[#D4B870]">Started {formatTime(job.started_at)}</span>
-              </>
+          {/* Bottom meta row: avatar + name + timestamp */}
+          <div className="flex items-center gap-2 mt-1.5">
+            {assignedUser ? (
+              <Avatar user={assignedUser} index={assignedUserIndex} />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-[#2A3347] flex items-center justify-center text-[#606060] text-[9px] font-bold shrink-0">
+                ALL
+              </div>
             )}
+            <span className="text-xs text-[#A0A0A0]">
+              {assignedUser ? assignedUser.name : 'All Devs'}
+            </span>
+            <span className="text-[#3A4A5A]">·</span>
+            <span className="text-xs text-[#606060] font-mono">
+              {formatTimeShort(job.created_at)}
+            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* "Open in Workbook" ghost button — appears on hover when link exists */}
+          {job.workbook_link && hovered && (
+            <a
+              href={job.workbook_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-[#A0A0A0] border border-[#2A3347] rounded-md hover:text-white hover:border-[#3A4A5A] transition-colors"
+            >
+              Open in Workbook
+              <ExternalLink size={10} />
+            </a>
+          )}
+
           {canStart && (
             <button
               onClick={e => { e.stopPropagation(); handleAction(() => onStart(job.id)) }}
@@ -252,7 +313,7 @@ export default function JobCard({
                   </div>
                 ) : (
                   <p className="text-sm text-[#EBEBEB]">
-                    {job.description || <span className="text-[#888] italic">No description</span>}
+                    {job.description || <span className="text-[#888]">No description</span>}
                   </p>
                 )}
               </div>
@@ -324,9 +385,9 @@ export default function JobCard({
               <div className="text-xs text-[#EBEBEB] space-y-0.5">
                 <div>Assigned to: <span className="text-white">{assignedUser ? assignedUser.name : 'All Devs'}</span></div>
                 <div>Created by: <span className="text-white">{createdByUser?.name || '—'}</span></div>
-                <div>Created: <span className="text-white">{formatTime(job.created_at)}</span></div>
-                {job.started_at && <div>Started: <span className="text-[#7EC87E]">{formatTime(job.started_at)}</span></div>}
-                {job.completed_at && <div>Completed: <span className="text-[#5CB85C]">{formatTime(job.completed_at)}</span></div>}
+                <div>Created: <span className="text-white font-mono">{formatTime(job.created_at)}</span></div>
+                {job.started_at && <div>Started: <span className="text-[#7EC87E] font-mono">{formatTime(job.started_at)}</span></div>}
+                {job.completed_at && <div>Completed: <span className="text-[#5CB85C] font-mono">{formatTime(job.completed_at)}</span></div>}
               </div>
 
               {/* Update status */}
