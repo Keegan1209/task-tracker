@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Flame, Plus, LogOut } from 'lucide-react'
+import Link from 'next/link'
+import { Flame, Plus, LogOut, CalendarDays } from 'lucide-react'
 import { Job, User, JobPriority, JobStatus, CreateJobPayload, FireAlarmPayload } from '@/types/job'
 import { fetchUsers, getSessionUser, setSessionUser, clearSessionUser } from '@/lib/users'
 import { requestNotificationPermission, sendP1Notification, sendFireAlarmNotification, sendAssignmentNotification } from '@/lib/notifications'
@@ -182,10 +183,17 @@ export default function Home() {
           />
         </div>
 
-        <nav className="flex-1 px-3 py-4">
+        <nav className="flex-1 px-3 py-4 space-y-1">
           <div className="px-2 py-1.5 text-xs text-white bg-white/10 rounded-md font-medium">
             Job Board
           </div>
+          <Link
+            href="/calendar"
+            className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-[#A0A0A0] hover:text-white hover:bg-white/5 rounded-md font-medium transition-colors"
+          >
+            <CalendarDays size={13} />
+            Calendar
+          </Link>
         </nav>
 
         {/* Current user */}
